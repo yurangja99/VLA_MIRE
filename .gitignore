@@ -1,0 +1,26 @@
+# Pipeline data and results (detector bank, logs, actions, videos): regenerated with the steps in README.md
+# (2. Preprocessing, 3. Evaluation). The small preprocessing outputs (phase calibration, grasp candidates, clean rollouts) are kept;
+# the detector bank of core_detect (2.4, ~0.9 GB) is not
+outputs/*
+!outputs/calibration/
+!outputs/grasps/
+!outputs/clean/
+
+# Notes and reports (plan, failure taxonomy, related work)
+docs/
+
+# Model weights and caches
+checkpoints/
+.cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Files written to the working directory at run time
+MUJOCO_LOG.TXT
+nohup.out
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store

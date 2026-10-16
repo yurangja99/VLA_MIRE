@@ -1,0 +1,124 @@
+{
+  "mire_only": {
+    "main": [
+      {"family": "arm_collision", "timing": 0.3, "task": 6, "init": 6, "seed": 6},
+      {"family": "grasp_failure", "timing": 0.55, "task": 7, "init": 5, "seed": 5},
+      {"family": "object_displace", "timing": 0.3, "task": 2, "init": 9, "seed": 9},
+      {"family": "object_tip", "timing": 0.55, "task": 7, "init": 9, "seed": 9}
+    ],
+    "sub": [
+      {"family": "arm_collision", "timing": 0.3, "task": 4, "init": 3, "seed": 3},
+      {"family": "arm_collision", "timing": 0.55, "task": 8, "init": 3, "seed": 3},
+      {"family": "arm_collision", "timing": 0.3, "task": 6, "init": 0, "seed": 0},
+      {"family": "arm_collision", "timing": 0.75, "task": 4, "init": 2, "seed": 2},
+      {"family": "grasp_failure", "timing": 0.55, "task": 4, "init": 5, "seed": 5},
+      {"family": "grasp_failure", "timing": 0.75, "task": 0, "init": 1, "seed": 1},
+      {"family": "grasp_failure", "timing": 0.3, "task": 8, "init": 3, "seed": 3},
+      {"family": "grasp_failure", "timing": 0.3, "task": 9, "init": 5, "seed": 5},
+      {"family": "object_displace", "timing": 0.75, "task": 5, "init": 6, "seed": 6},
+      {"family": "object_displace", "timing": 0.75, "task": 6, "init": 9, "seed": 9},
+      {"family": "object_displace", "timing": 0.3, "task": 8, "init": 7, "seed": 7},
+      {"family": "object_displace", "timing": 0.55, "task": 9, "init": 6, "seed": 6},
+      {"family": "object_tip", "timing": 0.75, "task": 8, "init": 10, "seed": 10},
+      {"family": "object_tip", "timing": 0.3, "task": 2, "init": 6, "seed": 6},
+      {"family": "object_tip", "timing": 0.75, "task": 0, "init": 1, "seed": 1},
+      {"family": "object_tip", "timing": 0.3, "task": 6, "init": 0, "seed": 0}
+    ]
+  },
+  "faster": {
+    "main": [
+      {"family": "arm_collision", "timing": 0.3, "task": 4, "init": 9, "seed": 9},
+      {"family": "grasp_failure", "timing": 0.3, "task": 5, "init": 2, "seed": 2},
+      {"family": "object_displace", "timing": 0.55, "task": 0, "init": 0, "seed": 0},
+      {"family": "object_tip", "timing": 0.55, "task": 2, "init": 2, "seed": 2}
+    ],
+    "sub": [
+      {"family": "arm_collision", "timing": 0.55, "task": 3, "init": 3, "seed": 3},
+      {"family": "arm_collision", "timing": 0.75, "task": 5, "init": 6, "seed": 6},
+      {"family": "arm_collision", "timing": 0.3, "task": 6, "init": 1, "seed": 1},
+      {"family": "arm_collision", "timing": 0.55, "task": 1, "init": 2, "seed": 2},
+      {"family": "grasp_failure", "timing": 0.3, "task": 7, "init": 4, "seed": 4},
+      {"family": "grasp_failure", "timing": 0.55, "task": 4, "init": 0, "seed": 0},
+      {"family": "grasp_failure", "timing": 0.55, "task": 9, "init": 0, "seed": 0},
+      {"family": "grasp_failure", "timing": 0.75, "task": 0, "init": 10, "seed": 10},
+      {"family": "object_displace", "timing": 0.3, "task": 3, "init": 4, "seed": 4},
+      {"family": "object_displace", "timing": 0.75, "task": 9, "init": 5, "seed": 5},
+      {"family": "object_displace", "timing": 0.75, "task": 2, "init": 2, "seed": 2},
+      {"family": "object_displace", "timing": 0.3, "task": 5, "init": 7, "seed": 7},
+      {"family": "object_tip", "timing": 0.3, "task": 6, "init": 6, "seed": 6},
+      {"family": "object_tip", "timing": 0.55, "task": 7, "init": 8, "seed": 8},
+      {"family": "object_tip", "timing": 0.75, "task": 6, "init": 6, "seed": 6},
+      {"family": "object_tip", "timing": 0.75, "task": 4, "init": 0, "seed": 0}
+    ]
+  },
+  "regrasp": {
+    "main": [
+      {"family": "arm_collision", "timing": 0.75, "task": 4, "init": 0, "seed": 0},
+      {"family": "grasp_failure", "timing": 0.75, "task": 6, "init": 9, "seed": 9},
+      {"family": "object_displace", "timing": 0.55, "task": 5, "init": 6, "seed": 6},
+      {"family": "object_tip", "timing": 0.55, "task": 4, "init": 8, "seed": 8}
+    ],
+    "sub": [
+      {"family": "arm_collision", "timing": 0.3, "task": 9, "init": 2, "seed": 2},
+      {"family": "arm_collision", "timing": 0.55, "task": 1, "init": 7, "seed": 7},
+      {"family": "arm_collision", "timing": 0.3, "task": 5, "init": 0, "seed": 0},
+      {"family": "arm_collision", "timing": 0.75, "task": 2, "init": 8, "seed": 8},
+      {"family": "grasp_failure", "timing": 0.55, "task": 0, "init": 5, "seed": 5},
+      {"family": "grasp_failure", "timing": 0.3, "task": 3, "init": 5, "seed": 5},
+      {"family": "grasp_failure", "timing": 0.55, "task": 9, "init": 9, "seed": 9},
+      {"family": "grasp_failure", "timing": 0.75, "task": 7, "init": 8, "seed": 8},
+      {"family": "object_displace", "timing": 0.3, "task": 0, "init": 1, "seed": 1},
+      {"family": "object_displace", "timing": 0.3, "task": 8, "init": 3, "seed": 3},
+      {"family": "object_displace", "timing": 0.75, "task": 6, "init": 1, "seed": 1},
+      {"family": "object_displace", "timing": 0.55, "task": 3, "init": 1, "seed": 1},
+      {"family": "object_tip", "timing": 0.75, "task": 9, "init": 2, "seed": 2},
+      {"family": "object_tip", "timing": 0.3, "task": 7, "init": 4, "seed": 4},
+      {"family": "object_tip", "timing": 0.3, "task": 8, "init": 0, "seed": 0},
+      {"family": "object_tip", "timing": 0.3, "task": 0, "init": 9, "seed": 9}
+    ]
+  },
+  "handoff": {
+    "main": [
+      {"family": "arm_collision", "timing": 0.55, "task": 3, "init": 9, "seed": 9},
+      {"family": "grasp_failure", "timing": 0.55, "task": 6, "init": 7, "seed": 7},
+      {"family": "object_displace", "timing": 0.55, "task": 5, "init": 9, "seed": 9},
+      {"family": "object_tip", "timing": 0.55, "task": 6, "init": 6, "seed": 6}
+    ],
+    "sub": [
+      {"family": "arm_collision", "timing": 0.75, "task": 1, "init": 8, "seed": 8},
+      {"family": "arm_collision", "timing": 0.75, "task": 9, "init": 6, "seed": 6},
+      {"family": "arm_collision", "timing": 0.3, "task": 7, "init": 7, "seed": 7},
+      {"family": "arm_collision", "timing": 0.55, "task": 5, "init": 1, "seed": 1},
+      {"family": "grasp_failure", "timing": 0.75, "task": 0, "init": 3, "seed": 3},
+      {"family": "grasp_failure", "timing": 0.55, "task": 3, "init": 8, "seed": 8},
+      {"family": "grasp_failure", "timing": 0.3, "task": 5, "init": 5, "seed": 5},
+      {"family": "grasp_failure", "timing": 0.3, "task": 2, "init": 6, "seed": 6},
+      {"family": "object_displace", "timing": 0.75, "task": 2, "init": 3, "seed": 3},
+      {"family": "object_displace", "timing": 0.3, "task": 3, "init": 0, "seed": 0},
+      {"family": "object_displace", "timing": 0.75, "task": 9, "init": 9, "seed": 9},
+      {"family": "object_displace", "timing": 0.55, "task": 6, "init": 0, "seed": 0},
+      {"family": "object_tip", "timing": 0.55, "task": 9, "init": 6, "seed": 6},
+      {"family": "object_tip", "timing": 0.75, "task": 0, "init": 2, "seed": 2},
+      {"family": "object_tip", "timing": 0.3, "task": 7, "init": 0, "seed": 0},
+      {"family": "object_tip", "timing": 0.75, "task": 1, "init": 1, "seed": 1}
+    ]
+  },
+  "limits": {
+    "main": [
+      {"family": "arm_collision", "timing": 0.55, "task": 6, "init": 4, "seed": 4},
+      {"family": "grasp_failure", "timing": 0.55, "task": 1, "init": 3, "seed": 3},
+      {"family": "object_displace", "timing": 0.3, "task": 0, "init": 5, "seed": 5},
+      {"family": "object_tip", "timing": 0.3, "task": 4, "init": 6, "seed": 6}
+    ],
+    "sub": [
+      {"family": "arm_collision", "timing": 0.75, "task": 2, "init": 1, "seed": 1},
+      {"family": "arm_collision", "timing": 0.3, "task": 9, "init": 7, "seed": 7},
+      {"family": "grasp_failure", "timing": 0.75, "task": 3, "init": 3, "seed": 3},
+      {"family": "grasp_failure", "timing": 0.3, "task": 8, "init": 4, "seed": 4},
+      {"family": "object_displace", "timing": 0.55, "task": 8, "init": 6, "seed": 6},
+      {"family": "object_displace", "timing": 0.75, "task": 1, "init": 4, "seed": 4},
+      {"family": "object_tip", "timing": 0.75, "task": 5, "init": 4, "seed": 4},
+      {"family": "object_tip", "timing": 0.55, "task": 7, "init": 3, "seed": 3}
+    ]
+  }
+}

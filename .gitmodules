@@ -1,0 +1,9 @@
+[submodule "LIBERO"]
+	path = LIBERO
+	url = https://github.com/Lifelong-Robot-Learning/LIBERO.git
+[submodule "openvla-oft"]
+	path = openvla-oft
+	url = https://github.com/moojink/openvla-oft.git
+[submodule "GraspGen"]
+	path = GraspGen
+	url = https://github.com/NVlabs/GraspGen.git
