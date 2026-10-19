@@ -11,7 +11,7 @@
 Clone it from GitHub. All commands below run from the repository root `VLA_MIRE/`.
 
 ```bash
-git clone --recursive https://github.com/yurangja99/vla_mire.git VLA_MIRE
+git clone --recursive https://github.com/yurangja99/VLA_MIRE.git VLA_MIRE
 cd VLA_MIRE
 ```
 
@@ -83,3 +83,65 @@ The clean reproduction gave 477/500 = 95.4%, close to the 94.5% LIBERO-Long (LIB
 - **Run time**: about 2 hours on one GPU
 - **Output**: `outputs/logs/libero_10/oft/EVAL-libero_10-openvla-<time>.txt`; failure videos in `outputs/videos/libero_10/oft/<run_id>/`
 - **Step limit**: the default for LIBERO-10 is 520.
+
+## 5. Preprocessing
+
+These steps run once before the perturbed evaluation. The outputs of 5.1–5.3 (`outputs/calibration/`, `outputs/grasps/`, `outputs/clean/`) are included in the repository and need not be rebuilt. The detector bank of 2.4 is not included because of its size (about 0.9 GB).
+
+### 5.1 Phase calibration
+
+Without perturbations, we run 50 initial states per task and record the first target object touched, the first target object picked (= the perturbation target), the step of each, and the success step. From these records, we compute the phase lengths that set the perturbation timing.
+
+```bash
+python src/panda/oft/run_libero_calibration.py $COMMON
+cp "$(ls -t outputs/calibration/libero_10/oft/CALIB-libero_10-*.json | head -1)" outputs/calibration/libero_10/oft/CALIB-libero_10.json
+```
+
+- **Outputs**
+  - Calibration: `outputs/calibration/libero_10/oft/CALIB-libero_10-<time>.json` (phase lengths per task and records per episode)
+  - File read by the perturbed evaluation and replay: `outputs/calibration/libero_10/oft/CALIB-libero_10.json` (set with `--calib_path`)
+  - Log: `outputs/logs/libero_10/oft/CALIB-libero_10-<time>.txt`
+- **Run time**: about 2 hours on one GPU
+- **Scope**: all 50 initial states per task are run and recorded with their outcome. The step limit is 600, and failed episodes are also kept in the JSON.
+- **Phase lengths**: the minimum over all successful episodes among the 50.
+  - `full`: steps until success
+  - `pre_grasp`: step at which the target first moves
+  - `carry`: steps from lifting the target to releasing it
+
+### 5.2 Grasp candidates (GraspGen)
+
+`volo`, `core`, `core_detect`, and `mire` choose grasps from candidates prepared for each object. The candidates are included in `outputs/grasps/`; GraspGen (Section 3) is needed only to rebuild them with the command below.
+
+```bash
+python src/panda/generate_grasps.py
+```
+
+- **Input point cloud**
+  - Objects: the 18 movable objects of LIBERO-10 (each asset once).
+  - 2,048 points sampled **only from the outer surface** of the object mesh. The bottom is included, so grasps for tipped-over objects are also generated.
+- **Generation**
+  - 4 rounds of 500 grasps, 2,000 saved in total; about 3 minutes.
+  - Candidates that pass the run-time filter (`conf >= 0.8`, `width <= 0.078`) range from 388 (moka pot) to 1,674 (cream cheese) per object.
+- **Output**: `outputs/grasps/libero_10/<object>.npz`, sorted by GraspGen score (high to low):
+  - `grasps`: N×4×4, in the object body frame
+  - `conf` (score) and `width` (object width measured at the height of the finger pads)
+  - `points`, `exterior_share`, `source_task`, `source_object`, `geoms`
+
+### 5.3 Clean rollouts (mire)
+
+MIRe imagines the arm and object trajectories without the perturbation and catches up with them to carry out the task, while handing back to the VLA early. Here we save the rollouts without perturbations; at run time, MIRe uses them as its imagined trajectories.
+
+```bash
+python src/panda/oft/collect_clean_trajectories.py $COMMON --num_workers 5
+```
+
+### 5.4 Detector bank and calibration (core_detect)
+
+`core_detect` detects perturbations with the CoRe detector. The detector measures how far the action-head features deviate (Mahalanobis distance) from those of successful rollouts without perturbations (the detector bank). We therefore collect the bank and calibrate the trigger threshold in advance.
+
+```bash
+# Detector bank: run 50 initial states per task without perturbations and record the action-head features
+python src/panda/oft/collect_detector_bank.py $COMMON --num_workers 5
+# Calibration: outputs/detector/libero_10/oft/task<id>.npz, index.json, summary.json (CPU)
+python src/panda/calibrate_detector.py
+```

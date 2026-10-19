@@ -1,12 +1,30 @@
 # Detailed results
 
-Supplementary material for Section 6 (Results) of the [README](README.md).
+Supplementary material for Section 1 (Results) of the [README](README.md).
 
-## 1. Failure stages and additional metrics per method
+## 1. Success per timing, failure stages, and per-method statistics
 
 <!-- The figure and tables below are regenerated from the logs by `python src/summarize_perturb.py`. Do not edit them by hand. -->
 
 <!-- DETAILS:nv10 START -->
+**Table S1. Success rate per perturbation and timing (%)**
+
+| Method | R1 arm collision<br>0.30 / 0.55 / 0.75 | T2 grasp failure<br>0.30 / 0.55 / 0.75 | G5 object displacement<br>0.30 / 0.55 / 0.75 | G4 object tip-over<br>0.30 / 0.55 / 0.75 |
+|---|---|---|---|---|
+| *CoRe paper: bare OFT* | *15.5 / 17.0 / 23.5* | *54.5 / 67.5 / 73.0* | *20.5 / 12.0 / 8.0* | *13.5 / 6.0 / 11.5* |
+| vanilla | 22 / 17 / 29 | 34 / 31 / 56 | 29 / 18 / 13 | 21 / 20 / 20 |
+| replan | 20 / 21 / 30 | 33 / 29 / 57 | 28 / 18 / 15 | 20 / 19 / 20 |
+| rehome | 63 / 47 / 51 | 23 / 26 / 47 | 26 / 30 / 26 | 20 / 23 / 19 |
+| retreat | 51 / 25 / 40 | 23 / 24 / 43 | 24 / 21 / 20 | 22 / 24 / 19 |
+| safeloop | <ins>67</ins> / <ins>61</ins> / <ins>69</ins> | 25 / 18 / 34 | 30 / 27 / 25 | 20 / 21 / 20 |
+| rewind_il | 22 / 39 / 47 | 32 / 39 / 60 | 26 / 13 / 14 | 22 / 22 / 19 |
+| volo | 23 / 17 / 22 | 32 / 30 / 58 | 18 / 19 / 22 | 16 / 22 / 24 |
+| core | 60 / 50 / <ins>69</ins> | <ins>66</ins> / 41 / 41 | <ins>65</ins> / <ins>71</ins> / <ins>72</ins> | <ins>47</ins> / <ins>54</ins> / <ins>58</ins> |
+| core_detect | 45 / 31 / 51 | 47 / <ins>50</ins> / <ins>63</ins> | 45 / 35 / 37 | 33 / 38 / 31 |
+| mire | **76** / **70** / **79** | **87** / **67** / **72** | **87** / **90** / **87** | **66** / **65** / **63** |
+
+- 95% interval of a per-timing value: about ±8–10 pp at 100 episodes
+
 **Figure S1. Failed episodes by recovery stage**
 
 <img src="assets/quantitative/libero_10_oft/failure_stages.png" alt="Failed episodes by recovery stage" width="800">
@@ -23,7 +41,7 @@ Supplementary material for Section 6 (Results) of the [README](README.md).
 | Recovery execution failed | Acted but fell short: not arrived, grasp missed, object not restored (> 3 cm), mire handed back early |
 | Policy failed after recovery | Recovery finished, but the policy did not complete the task within 600 steps |
 
-**Table S1. rehome statistics (valid episodes, 3 timings pooled)**
+**Table S2. rehome statistics (valid episodes, 3 timings pooled)**
 
 | Perturbation | Episodes | Moved holding the object | Arrived | Mean steps (lift + joint) | Contact besides the held object | Cut off by the episode end |
 |---|---|---|---|---|---|---|
@@ -32,7 +50,7 @@ Supplementary material for Section 6 (Results) of the [README](README.md).
 | G5 object displacement | 300 | 0% | 100% | 11 + 18 | 2% | 0% |
 | G4 object tip-over | 300 | 0% | 100% | 12 + 19 | 1% | 0% |
 
-**Table S2. Rewind baselines statistics (valid episodes, 3 timings pooled)**
+**Table S3. Rewind baselines statistics (valid episodes, 3 timings pooled)**
 
 | Method | Perturbation | Episodes | Rewound | Rewind distance (steps) | Intervention steps | Arrived | Contact besides the held object | Cut off by the episode end | Notes |
 |---|---|---|---|---|---|---|---|---|---|
@@ -54,7 +72,7 @@ Supplementary material for Section 6 (Results) of the [README](README.md).
 - Contact: anything the robot touched while rewinding, except what it held
 - retreat hands back after 40 steps, arrived or not
 
-**Table S3. volo statistics (valid episodes, 3 timings pooled)**
+**Table S4. volo statistics (valid episodes, 3 timings pooled)**
 
 | Perturbation | Episodes | Grasp chosen | No solution → VLA | Continue reason (holding / goal met / not disturbed) | Grasped and lifted | Median planning time | Intervention steps | Contact besides the target |
 |---|---|---|---|---|---|---|---|---|
@@ -68,7 +86,7 @@ Supplementary material for Section 6 (Results) of the [README](README.md).
 - Grasped and lifted, intervention steps, contact: over the executed grasps
 - Planning time: wall clock, with the simulation paused
 
-**Table S4. core statistics (valid episodes, 3 timings pooled)**
+**Table S5. core statistics (valid episodes, 3 timings pooled)**
 
 | Perturbation | Episodes | Rewind distance (steps) | Imagined rollout steps (proximity / cap / IK failure) | Restoration needed | Restored | Infeasible (intervention request) | Intervention steps | Timeout | Success | Success (intervention request = failure) |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -84,7 +102,7 @@ Supplementary material for Section 6 (Results) of the [README](README.md).
 - Timeout: failures that hit the 600-step limit
 - Last column: intervention requests counted as failures, as in the paper
 
-**Table S5. core_detect statistics (valid episodes, 3 timings pooled)**
+**Table S6. core_detect statistics (valid episodes, 3 timings pooled)**
 
 | Perturbation | Episodes | False trigger before the perturbation | Triggered after | Not triggered after (of which success) | Median perturbation→trigger steps (oracle) | Recoveries | Restoration needed | Restored | Intervention request | Restoration cap | Timeout | Success | Success (intervention request = failure) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -100,7 +118,7 @@ Supplementary material for Section 6 (Results) of the [README](README.md).
 - Recoveries: mean per episode
 - Restoration columns: per recovery (needed / all recoveries); success: per episode
 
-**Table S6. mire statistics (valid episodes, 3 timings pooled)**
+**Table S7. mire statistics (valid episodes, 3 timings pooled)**
 
 | Perturbation | Episodes | Route: none / carry / grasp / resume subgoal / gave up | Grasp: own / set down and retaken / other (success of each) | Handoff: agreement / 40 steps before the goal / goal unreachable / grasp missed | Intervention steps (agreement handoffs) | Success after an agreement handoff | Timeout | Success |
 |---|---|---|---|---|---|---|---|---|

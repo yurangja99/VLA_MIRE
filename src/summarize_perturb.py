@@ -2,9 +2,10 @@
 summarize_perturb.py
 
 Aggregates run_libero_eval_perturb.py results into markdown and writes it between marker comments: the success tables
-(per-family mean +- sample std across timings, and per timing) into README.md, and the failure-stage heatmap
-(assets/quantitative/<suite>_<backbone>/failure_stages.png, see plot_failure_stages) with the per-method statistics into RESULTS.md. A condition (recovery x
-family x timing) is reported once every task split of it has finished (its .txt log has the "Total" line).
+(per-family mean +- sample std across timings, and success within a step budget) into README.md, and the success per
+timing, the failure-stage heatmap (assets/quantitative/<suite>_<backbone>/failure_stages.png, see plot_failure_stages)
+and the per-method statistics into RESULTS.md. A condition (recovery x family x timing) is reported once every task
+split of it has finished (its .txt log has the "Total" line).
 
     python src/summarize_perturb.py --tag nv10
 """
@@ -24,6 +25,7 @@ import src.paths as P
 FAMILIES = [("arm_collision", "R1 arm collision"), ("grasp_failure", "T2 grasp failure"),
             ("object_displace", "G5 object displacement"), ("object_tip", "G4 object tip-over")]
 TIMINGS = [0.30, 0.55, 0.75]
+BUDGETS = [300, 350, 400, 450, 500, 600]  # Steps: success within each (Table 2; 600 = the step limit)
 RECOVERIES = ["vanilla", "replan", "rehome", "retreat", "safeloop", "rewind_il", "volo", "core", "core_detect", "mire"]
 REWINDS = ["retreat", "safeloop", "rewind_il"]  # Joint-space rewinds: own statistics table
 # CoRe (arXiv 2608.14822) Table A6, bare OpenVLA-OFT: S / M / D per family (200 episodes each)
@@ -115,7 +117,24 @@ def tables(res, cfg):
     for r in RECOVERIES:
         lines.append(f"| {r} | " + " | ".join(cols[r]) + " |")
 
-    lines += ["", "**Table 2. Success rate per perturbation and timing (%)**", "",
+    # Success within a step budget, failures never counted (no selection by which episodes a method solves)
+    complete = {r: all((r, f, t) in res for f, _ in FAMILIES for t in TIMINGS) for r in RECOVERIES}
+    within = {r: [100.0 * sum(x["success"] and x["success_step"] <= b for x in valid[r]) / len(valid[r]) for b in BUDGETS]
+              if complete[r] and valid[r] else None for r in RECOVERIES}
+    lines += ["", f"**Table 2. Success rate within a step budget (%), all perturbations and timings pooled ({eps_txt})**", "",
+              "| Method | " + " | ".join(f"≤ {b} steps" for b in BUDGETS) + " |", "|---" * (len(BUDGETS) + 1) + "|"]
+    cells = {r: [] for r in RECOVERIES}
+    for i in range(len(BUDGETS)):  # Best in bold, second best underlined, per budget
+        marked = mark_best({r: None if within[r] is None else (float(f"{within[r][i]:.1f}"), f"{within[r][i]:.1f}")
+                            for r in RECOVERIES})
+        for r in RECOVERIES:
+            cells[r].append(marked[r])
+    lines += [f"| {r} | " + " | ".join(cells[r]) + " |" for r in RECOVERIES]
+    lines += ["", "- Steps count from the start of the episode; an episode that fails counts as unfinished at every budget",
+              "- 600 steps is the step limit, so the last column is the overall success rate"]
+
+    main, lines = lines, []  # The rest goes to RESULTS.md
+    lines += ["**Table S1. Success rate per perturbation and timing (%)**", "",
               "| Method | " + " | ".join(f"{name}<br>0.30 / 0.55 / 0.75" for _, name in FAMILIES) + " |",
               "|---" * (len(FAMILIES) + 1) + "|"]
     lines.append("| *CoRe paper: bare OFT* | " + " | ".join(
@@ -130,8 +149,8 @@ def tables(res, cfg):
     n_t = len(TIMINGS)
     for r in RECOVERIES:
         lines.append(f"| {r} | " + " | ".join(" / ".join(cells[r][i * n_t:(i + 1) * n_t]) for i in range(len(FAMILIES))) + " |")
+    lines += ["", "- 95% interval of a per-timing value: about ±8–10 pp at 100 episodes", ""]
 
-    main, lines = lines, []  # The rest goes to RESULTS.md
     figure = os.path.relpath(cfg.figure, os.path.dirname(os.path.abspath(cfg.results)))
     lines += ["**Figure S1. Failed episodes by recovery stage**", "",
               f'<img src="{figure}" alt="Failed episodes by recovery stage" width="{FIG_WIDTH_PX}">', "",
@@ -142,7 +161,7 @@ def tables(res, cfg):
               "| Stage | Meaning |", "|---|---|"]
     lines += [f"| {name.replace(chr(10), ' ')} | {meaning} |" for name, meaning in zip(STAGES, STAGE_MEANINGS)]
 
-    lines += ["", "**Table S1. rehome statistics (valid episodes, 3 timings pooled)**", "",
+    lines += ["", "**Table S2. rehome statistics (valid episodes, 3 timings pooled)**", "",
               "| Perturbation | Episodes | Moved holding the object | Arrived | Mean steps (lift + joint) | Contact besides the held object | Cut off by the episode end |",
               "|---|---|---|---|---|---|---|"]
     for f, name in FAMILIES:
@@ -162,7 +181,7 @@ def tables(res, cfg):
                      f"{np.mean(lift):.0f} + {np.mean(joint) if joint else 0:.0f} | {pct(other)} | "
                      f"{pct([i.get('interrupted', False) for i in info])} |")
 
-    lines += ["", "**Table S2. Rewind baselines statistics (valid episodes, 3 timings pooled)**", "",
+    lines += ["", "**Table S3. Rewind baselines statistics (valid episodes, 3 timings pooled)**", "",
               "| Method | Perturbation | Episodes | Rewound | Rewind distance (steps) | Intervention steps | Arrived | Contact besides the held object | Cut off by the episode end | Notes |",
               "|---|---|---|---|---|---|---|---|---|---|"]
     for r in REWINDS:
@@ -197,7 +216,7 @@ def tables(res, cfg):
               "- Contact: anything the robot touched while rewinding, except what it held",
               "- retreat hands back after 40 steps, arrived or not"]
 
-    lines += ["", "**Table S3. volo statistics (valid episodes, 3 timings pooled)**", "",
+    lines += ["", "**Table S4. volo statistics (valid episodes, 3 timings pooled)**", "",
               "| Perturbation | Episodes | Grasp chosen | No solution → VLA | Continue reason (holding / goal met / not disturbed) | Grasped and lifted | Median planning time | Intervention steps | Contact besides the target |",
               "|---|---|---|---|---|---|---|---|---|"]
     for f, name in FAMILIES:
@@ -223,7 +242,7 @@ def tables(res, cfg):
               "- Grasped and lifted, intervention steps, contact: over the executed grasps",
               "- Planning time: wall clock, with the simulation paused"]
 
-    lines += ["", "**Table S4. core statistics (valid episodes, 3 timings pooled)**", "",
+    lines += ["", "**Table S5. core statistics (valid episodes, 3 timings pooled)**", "",
               "| Perturbation | Episodes | Rewind distance (steps) | Imagined rollout steps (proximity / cap / IK failure) | Restoration needed | Restored | Infeasible (intervention request) | Intervention steps | Timeout | Success | Success (intervention request = failure) |",
               "|---|---|---|---|---|---|---|---|---|---|---|"]
     for f, name in FAMILIES:
@@ -250,7 +269,7 @@ def tables(res, cfg):
               "- Timeout: failures that hit the 600-step limit",
               "- Last column: intervention requests counted as failures, as in the paper"]
 
-    lines += ["", "**Table S5. core_detect statistics (valid episodes, 3 timings pooled)**", "",
+    lines += ["", "**Table S6. core_detect statistics (valid episodes, 3 timings pooled)**", "",
               "| Perturbation | Episodes | False trigger before the perturbation | Triggered after | Not triggered after (of which success) | Median perturbation→trigger steps (oracle) | Recoveries | Restoration needed | Restored | Intervention request | Restoration cap | Timeout | Success | Success (intervention request = failure) |",
               "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     oracle = {"arm_collision": 13, "grasp_failure": 18, "object_displace": 9, "object_tip": 12}  # injection + 8 steps
@@ -283,7 +302,7 @@ def tables(res, cfg):
               "- Recoveries: mean per episode",
               "- Restoration columns: per recovery (needed / all recoveries); success: per episode"]
 
-    lines += ["", "**Table S6. mire statistics (valid episodes, 3 timings pooled)**", "",
+    lines += ["", "**Table S7. mire statistics (valid episodes, 3 timings pooled)**", "",
               "| Perturbation | Episodes | Route: none / carry / grasp / resume subgoal / gave up | Grasp: own / set down and retaken / other (success of each) | Handoff: agreement / 40 steps before the goal / goal unreachable / grasp missed | Intervention steps (agreement handoffs) | Success after an agreement handoff | Timeout | Success |",
               "|---|---|---|---|---|---|---|---|---|"]
     for f, name in FAMILIES:
@@ -333,7 +352,6 @@ def tables(res, cfg):
     nv = sorted(set(n_valid.values()))
     main += ["", f"- Progress: {done}/{total} conditions (`…` = still running)",
               f"- Valid episodes per condition: {', '.join(map(str, nv)) if nv else '-'} (10 tasks pooled; CoRe paper: 200)",
-              "- 95% interval of a per-timing value: about ±8–10 pp at 100 episodes",
               "- The CoRe paper reports CoRe only on π0.5, X-VLA and GR00T N1.7, not on OpenVLA-OFT"]
     return "\n".join(main), "\n".join(lines)
 

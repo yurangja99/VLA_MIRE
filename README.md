@@ -26,250 +26,26 @@ This repository injects four perturbations into a frozen OpenVLA-OFT (LIBERO-10)
 <tr><th>mid</th><td><a href="assets/demo/libero_10_oft/arm_collision_0.55_task9_init5_seed5.mp4"><img src="assets/demo/libero_10_oft/arm_collision_0.55_task9_init5_seed5.gif" alt="arm_collision_0.55" width="160"></a></td><td><a href="assets/demo/libero_10_oft/grasp_failure_0.55_task9_init5_seed5.mp4"><img src="assets/demo/libero_10_oft/grasp_failure_0.55_task9_init5_seed5.gif" alt="grasp_failure_0.55" width="160"></a></td><td><a href="assets/demo/libero_10_oft/object_displace_0.55_task9_init5_seed5.mp4"><img src="assets/demo/libero_10_oft/object_displace_0.55_task9_init5_seed5.gif" alt="object_displace_0.55" width="160"></a></td><td><a href="assets/demo/libero_10_oft/object_tip_0.55_task9_init5_seed5.mp4"><img src="assets/demo/libero_10_oft/object_tip_0.55_task9_init5_seed5.gif" alt="object_tip_0.55" width="160"></a></td></tr>
 <tr><th>late</th><td><a href="assets/demo/libero_10_oft/arm_collision_0.75_task9_init5_seed5.mp4"><img src="assets/demo/libero_10_oft/arm_collision_0.75_task9_init5_seed5.gif" alt="arm_collision_0.75" width="160"></a></td><td><a href="assets/demo/libero_10_oft/grasp_failure_0.75_task9_init5_seed5.mp4"><img src="assets/demo/libero_10_oft/grasp_failure_0.75_task9_init5_seed5.gif" alt="grasp_failure_0.75" width="160"></a></td><td><a href="assets/demo/libero_10_oft/object_displace_0.75_task9_init5_seed5.mp4"><img src="assets/demo/libero_10_oft/object_displace_0.75_task9_init5_seed5.gif" alt="object_displace_0.75" width="160"></a></td><td><a href="assets/demo/libero_10_oft/object_tip_0.75_task9_init5_seed5.mp4"><img src="assets/demo/libero_10_oft/object_tip_0.75_task9_init5_seed5.gif" alt="object_tip_0.75" width="160"></a></td></tr>
 </table>
-<em>MIRe on one episode ("put the yellow and white mug in the microwave and close it") under all twelve perturbations, early / mid / late = timing 0.30 / 0.55 / 0.75: it succeeds in every one. Click a clip for the full video. More in <a href="#62-qualitative-results">6.2</a>.</em>
+<em>MIRe on one episode ("put the yellow and white mug in the microwave and close it") under all twelve perturbations, early / mid / late = timing 0.30 / 0.55 / 0.75: it succeeds in every one. Click a clip for the full video. More in <a href="#12-qualitative-results">1.2</a>.</em>
 </div>
 
 ## Contents
 
-1. [Installation](#1-installation) ([INSTALL.md](INSTALL.md))
-2. [Preprocessing](#2-preprocessing)
-3. [Evaluation](#3-evaluation)
-4. [Recovery methods](#4-recovery-methods)
+1. [Results](#1-results) ([RESULTS.md](RESULTS.md))
+2. [Method](#2-method) ([BASELINES.md](BASELINES.md))
+3. [Installation](#3-installation) ([INSTALL.md](INSTALL.md))
+4. [Evaluation](#4-evaluation)
 5. [Replay](#5-replay)
-6. [Results](#6-results) ([RESULTS.md](RESULTS.md))
-7. [Limitations](#7-limitations)
-8. [References](#8-references)
+6. [Limitations](#6-limitations)
+7. [References](#7-references)
 
 ---
 
-## 1. Installation
+## 1. Results
 
-See [INSTALL.md](INSTALL.md) for installation, a quick check, and the OpenVLA-OFT evaluation without perturbations (clean evaluation). Run all commands below from the repository root (`VLA_MIRE/`) with the following environment variables, set in every new terminal.
+The success rates per timing, the failure-stage analysis, additional metrics per method, and all qualitative results per scenario are in [RESULTS.md](RESULTS.md).
 
-```bash
-conda activate openvla-oft
-export MUJOCO_GL=egl PYTHONPATH=$PWD/openvla-oft:$PWD
-export PYTHONPYCACHEPREFIX=$PWD/.cache/pycache   # keeps __pycache__ out of the submodules
-COMMON="--pretrained_checkpoint moojink/openvla-7b-oft-finetuned-libero-10 --task_suite_name libero_10"
-```
-
----
-
-## 2. Preprocessing
-
-These steps run once before the perturbed evaluation. The outputs of 2.1–2.3 (`outputs/calibration/`, `outputs/grasps/`, `outputs/clean/`) are included in the repository and need not be rebuilt. The detector bank of 2.4 is not included because of its size (about 0.9 GB).
-
-### 2.1 Phase calibration
-
-Without perturbations, we run 50 initial states per task and record the first target object touched, the first target object picked (= the perturbation target), the step of each, and the success step. From these records, we compute the phase lengths that set the perturbation timing.
-
-```bash
-python src/panda/oft/run_libero_calibration.py $COMMON
-cp "$(ls -t outputs/calibration/libero_10/oft/CALIB-libero_10-*.json | head -1)" outputs/calibration/libero_10/oft/CALIB-libero_10.json
-```
-
-- **Outputs**
-  - Calibration: `outputs/calibration/libero_10/oft/CALIB-libero_10-<time>.json` (phase lengths per task and records per episode)
-  - File read by the perturbed evaluation and replay: `outputs/calibration/libero_10/oft/CALIB-libero_10.json` (set with `--calib_path`)
-  - Log: `outputs/logs/libero_10/oft/CALIB-libero_10-<time>.txt`
-- **Run time**: about 2 hours on one GPU
-- **Scope**: all 50 initial states per task are run and recorded with their outcome. The step limit is 600, and failed episodes are also kept in the JSON.
-- **Phase lengths**: the minimum over all successful episodes among the 50.
-  - `full`: steps until success
-  - `pre_grasp`: step at which the target first moves
-  - `carry`: steps from lifting the target to releasing it
-
-### 2.2 Grasp candidates (GraspGen)
-
-`volo`, `core`, `core_detect`, and `mire` choose grasps from candidates prepared for each object. The candidates are included in `outputs/grasps/`; GraspGen ([INSTALL.md](INSTALL.md), Section 3) is needed only to rebuild them with the command below.
-
-```bash
-python src/panda/generate_grasps.py
-```
-
-- **Input point cloud**
-  - Objects: the 18 movable objects of LIBERO-10 (each asset once).
-  - 2,048 points sampled **only from the outer surface** of the object mesh. The bottom is included, so grasps for tipped-over objects are also generated.
-- **Generation**
-  - 4 rounds of 500 grasps, 2,000 saved in total; about 3 minutes.
-  - Candidates that pass the run-time filter (`conf >= 0.8`, `width <= 0.078`) range from 388 (moka pot) to 1,674 (cream cheese) per object.
-- **Output**: `outputs/grasps/libero_10/<object>.npz`, sorted by GraspGen score (high to low):
-  - `grasps`: N×4×4, in the object body frame
-  - `conf` (score) and `width` (object width measured at the height of the finger pads)
-  - `points`, `exterior_share`, `source_task`, `source_object`, `geoms`
-
-### 2.3 Clean rollouts (mire)
-
-MIRe imagines the arm and object trajectories without the perturbation and catches up with them to carry out the task, while handing back to the VLA early. Here we save the rollouts without perturbations; at run time, MIRe uses them as its imagined trajectories.
-
-```bash
-python src/panda/oft/collect_clean_trajectories.py $COMMON --num_workers 5
-```
-
-### 2.4 Detector bank and calibration (core_detect)
-
-`core_detect` detects perturbations with the CoRe detector. The detector measures how far the action-head features deviate (Mahalanobis distance) from those of successful rollouts without perturbations (the detector bank). We therefore collect the bank and calibrate the trigger threshold in advance.
-
-```bash
-# Detector bank: run 50 initial states per task without perturbations and record the action-head features
-python src/panda/oft/collect_detector_bank.py $COMMON --num_workers 5
-# Calibration: outputs/detector/libero_10/oft/task<id>.npz, index.json, summary.json (CPU)
-python src/panda/calibrate_detector.py
-```
-
----
-
-## 3. Evaluation
-
-### 3.1 Full run
-
-For each method, the 12 conditions (4 perturbations × 3 timings) run one after another, and the result tables are updated after each condition. Conditions that already have a finished log (one with a `Total:` line) are skipped, and a failed condition is left as is while the loop moves on. Running the same command again therefore evaluates only the remaining and failed conditions.
-
-```bash
-RECS="vanilla replan rehome retreat safeloop rewind_il volo core core_detect mire"   # methods to run
-for R in $RECS; do for F in arm_collision grasp_failure object_displace object_tip; do for TM in 0.30 0.55 0.75; do
-  grep -qs "Total:" outputs/logs/libero_10/oft/PERTURB-$R-$F-$TM-*--nv10.txt && continue   # skip finished conditions
-  python src/panda/oft/run_libero_eval_perturb_parallel.py $COMMON --save_videos none \
-    --perturb_family $F --perturb_timing $TM --recovery $R --run_id_note nv10 \
-    --num_valid_per_task 10 --num_workers 5   # on failure, move on to the next condition
-  python src/summarize_perturb.py --num_splits 1 > /dev/null
-done; done; done
-```
-
-| Option | Value | Description |
-|---|---|---|
-| `--perturb_family` | `arm_collision` / `grasp_failure` / `object_displace` / `object_tip` | Perturbation: hit on the arm / gripper forced open while carrying / target moved by 12 cm / target tipped over |
-| `--perturb_timing` | `0.30` / `0.55` / `0.75` | Fraction of the calibrated phase length |
-| `--recovery` | `vanilla` `replan` `rehome` `retreat` `safeloop` `rewind_il` `volo` `core` `core_detect` `mire` | Recovery method ([4. Recovery methods](#4-recovery-methods)) |
-| `--num_valid_per_task` | default 20, 10 in our experiments | Valid episodes collected per task |
-| `--num_workers` | default 5 | Simulator processes sharing one model |
-| `--max_steps` | default 600 | Step limit per episode |
-| `--recovery_delay` | default 8 | Steps from the end of the perturbation to the recovery trigger (oracle trigger; not used by `core_detect`) |
-| `--run_id_note` | e.g., `nv10` | Tag in the log names; aggregation (`summarize_perturb.py --tag`) selects runs by this string |
-
-- **Episode selection**: `--num_valid_per_task` valid episodes are collected per task.
-  - Only initial states that succeed in the clean evaluation are used, starting from index 0. The perturbation seed of initial state k is k (k+50, k+100, … when 50 are not enough).
-  - All methods use the same rule, so the same episodes can be paired across methods.
-- **Outputs**
-  - Logs: `outputs/logs/libero_10/oft/PERTURB-<recovery>-<perturbation>-<timing>-<time>--<note>.txt` (the last `Total:` line gives the successes in the condition)
-  - Per-episode records: the `.jsonl` file with the same name (validity, perturbation parameters, trigger step, success step, and recovery details in `recovery_info`)
-  - Actions: `outputs/actions/libero_10/oft/<run_id>/` (for replay)
-- **Aggregation**: each condition runs as one log, so the tables are built with `--num_splits 1`. If the tasks were split across two GPUs (`--task_ids 0-4` / `5-9`), each condition has two logs; use `--num_splits 2` (default).
-
-**Run time and notes**
-- **Time per method**: about 4–10 hours on one GPU (with two GPUs: `core` 4.2 h, `core_detect` 5.3 h, `mire` 3.7 h).
-- **Out of memory**: reduce `--num_workers`.
-
----
-
-## 4. Recovery methods
-
-| Method | Source | What it does (all but `core_detect` use the oracle trigger: end of the perturbation + 8 steps) |
-|---|---|---|
-| `vanilla` | – | No recovery (only the trigger step is recorded) |
-| `replan` | – | Discards the remaining action chunk and queries again with the same instruction |
-| `rehome` | – | Lifts the arm, interpolates the joints back to the initial pose, and queries again |
-| `retreat` | [Simple Retreat](https://arxiv.org/abs/2610.06921) (arXiv, uploaded 2026-10-02) | Retreats to the joint pose of 120 steps earlier and hands back after 40 steps |
-| `safeloop` | [SafeLoop](https://arxiv.org/abs/2609.26313) (IROS 2026) | Rolls the joints back to a safe waypoint saved every 20 steps |
-| `rewind_il` | [Rewind-IL](https://arxiv.org/abs/2604.16683) (RA-L 2026, presented at ICRA 2027) | Returns to the joint pose of the latest subgoal checkpoint |
-| `volo` | [VoLo](https://arxiv.org/abs/2606.07723) (CoRL 2026) | Re-grasps the perturbed target with a GraspGen grasp and hands back right away |
-| `core` | [CoRe](https://arxiv.org/abs/2608.14822) (arXiv, uploaded 2026-08-14) | Picks a rejoin point with an imagined rollout, physically puts the target back, and hands back. Detection is replaced by an oracle (100% detection) |
-| `core_detect` | [CoRe](https://arxiv.org/abs/2608.14822) (arXiv, uploaded 2026-08-14) | CoRe closer to the paper, triggered by its latent Mahalanobis detector. Recovery after the trigger is the same as `core` |
-| `mire` | ours | Does not rewind the world; re-grasps with the original grasp, carries with a DMP, and hands back early once the shadow VLA agrees |
-
-Since this repository compares recovery, all baselines use the same oracle trigger instead of their own detectors or VLMs (only `core_detect` uses the original detector). Differences from the original papers are listed per method below.
-
-### rehome
-When a failure occurs, the gripper returns to its initial position, the action chunk is cleared, and the policy starts again.
-- The arm is first lifted and then interpolated to the initial joint pose, so that it does not hit objects on the way back.
-- A held object stays in the gripper on the way back.
-
-### retreat
-**Source**: Sheng et al., *Does a Learned Corrector Beat a Simple Retreat? Evidence from a Frozen VLA*, arXiv, uploaded 2026-10-02 · [arXiv:2610.06921](https://arxiv.org/abs/2610.06921) (code to be released)
-
-When a perturbation occurs, the arm retreats to the joint pose of 120 steps earlier and hands back to the VLA after 40 steps.
-- A simple recovery that only retreats, with no planner or learning. The paper finds no difference between a learned corrector and this retreat.
-- Joint interpolation only, without path planning or lifting.
-
-### safeloop
-**Source**: Lou et al., *SafeLoop: Risk-Aware Rollback for Vision-Language-Action Manipulation*, IROS 2026 · [arXiv:2609.26313](https://arxiv.org/abs/2609.26313) · [GitHub](https://github.com/Loule0-0/SafeLoop/tree/release/safeloop)
-
-Rewinds to a safe joint pose saved every 20 steps before the perturbation, then hands back to the VLA.
-- The learned risk predictor and decision module of the paper are replaced by an oracle.
-  - The state before an injected perturbation is always safe, so the joint pose is saved every 20 steps.
-  - The perturbation time is known, so detection is set to 8 steps after the perturbation ends.
-- As in the paper, no rollback is done if the arm touches something on the rewind path.
-
-### rewind_il
-**Source**: Zheng et al., *Rewind-IL: Online Failure Detection and State Respawning for Imitation Learning*, IEEE RA-L 2026 (presented at ICRA 2027) · [arXiv:2604.16683](https://arxiv.org/abs/2604.16683) · [Project](https://sjay05.github.io/rewind-il)
-
-Returns to the joint pose of the latest subgoal checkpoint (when the target was grasped or a goal condition was met), then hands back to the VLA.
-- The VLM-based checkpoint selection and the policy-feature-based recognition of the paper are replaced by BDDL milestones tracked in the simulator.
-- If there is no checkpoint to return to, it does nothing.
-
-### volo
-**Source**: Chen et al., *VoLo: A Physical Orchestrator for Open-Vocabulary Long-Horizon Manipulation*, CoRL 2026 · [arXiv:2606.07723](https://arxiv.org/abs/2606.07723) · [Project](https://chicychen.github.io/VoLo/) · [GitHub](https://github.com/NVlabs/VoLoAgent)
-
-Re-grasps the perturbed target with a GraspGen grasp and hands back to the VLA right after lifting it.
-- Of the paper's tools, only the grasp tool is reproduced. VLM monitoring and tool selection are replaced by the oracle trigger and state rules, and object perception by simulator poses.
-- The grasp is the first candidate, in score order, that passes IK and collision checks. How the VLA originally grasped the object is not considered.
-
-### core
-**Source**: Zhang et al., *Imagining Recovery: Inference-Time Counterfactual Realignment for Vision-Language-Action Models*, arXiv, uploaded 2026-08-14 · [arXiv:2608.14822](https://arxiv.org/abs/2608.14822) (code not released)
-
-Rolls out the policy in imagination from a reference point before the perturbation to pick a rejoin point, puts the moved target back in place, moves the arm to the rejoin point, and hands back to the policy.
-- Detection is the same oracle as for the other baselines (100% detection). The version with the original detector is `core_detect`.
-- In LIBERO, the paper restores the world by writing the simulator state directly; we restore it by physical pick-and-place. Restoration can therefore fail. In that case, instead of the paper's request for human help, only the arm is moved to the rejoin point before handing back.
-- The imagined rollout uses observations rendered by moving the arm in a separate copy of the simulator, instead of the paper's RGB-D voxel synthesis.
-
-### core_detect
-**Source**: the same paper as `core` (CoRe)
-
-CoRe closer to the paper, triggered by its online OOD detector (Mahalanobis distance of the action-head latents). Recovery after the trigger is the same as `core`.
-- The detector follows the paper, but uses one query instead of eight because the OFT action head is deterministic.
-- There are no false triggers before the perturbation (0/1200), but triggering is late: the median delay from the perturbation to the first trigger is 60–170 steps (9–18 for the oracle). The quarter of episodes with the latest triggers has an 8% success rate, far below `core` on the same episodes (55%).
-
-### mire (ours)
-
-<p align="center">
-  <img src="assets/teaser/mire_method.png" alt="MIRe: route, own grasp, DMP pathway and shadow handoff" width="800"><br>
-  <em>MIRe routes on the target object's state, retakes it with the policy's own grasp, follows the clean path with a DMP, and hands back once the shadow-queried VLA agrees.</em>
-</p>
-
-Does not rewind the world (arm and objects). It re-grasps the target with the grasp the VLA originally used, carries it, and hands back as soon as the VLA can take over.
-- **No rewind**: the arm and objects are not rewound to a past state; the current subgoal continues from the perturbed state.
-- **Original grasp**: the grasp the VLA made in the clean rollout is reused in the object frame. If that grasp cannot be reached directly, the object is picked with another grasp, set down, and taken again with the original grasp, so that the VLA takes over from a familiar hand pose.
-- **DMP carry**: a joint-space DMP follows the shape of the clean carry, with a repulsive term that avoids predicted collisions. Releasing is left to the VLA; the carry stops 40 steps before it.
-- **Shadow VLA handoff**: the VLA is queried during the carry, and control is handed back on the spot once its actions agree with the plan three times in a row.
-- **Imagined trajectory**: the trajectory without the perturbation is used like the imagined rollout of CoRe. For now, it is replaced by a real rollout run beforehand from the same initial state.
-
----
-
-## 5. Replay
-
-The perturbed evaluation records the policy actions and fixture positions of every episode, so videos can be made again without the model.
-
-```bash
-python src/panda/oft/replay_libero.py --recovery mire --family object_tip --timing 0.55 --task_ids 0-4 --success false
-```
-
-Videos are saved in `outputs/videos/libero_10/oft/<run_id>/`.
-
-The qualitative videos of [Section 6.2](#62-qualitative-results) and Section 2 of [RESULTS.md](RESULTS.md) are made the same way: paired episodes are chosen per scenario, and the methods are placed side by side in one video.
-
-```bash
-python src/panda/oft/make_qualitative.py --num_workers 8
-```
-
-The videos (mp4) and previews (GIF) are saved in `assets/qualitative/libero_10_oft/`, and the lists in Section 6.2 and in Section 2 of RESULTS.md are rewritten.
-
----
-
-## 6. Results
-
-The failure-stage analysis, additional metrics per method, and all qualitative results per scenario are in [RESULTS.md](RESULTS.md).
-
-### 6.1 Quantitative results
+### 1.1 Quantitative results
 
 <!-- The tables below are regenerated from the logs by `python src/summarize_perturb.py`. Do not edit them by hand. -->
 
@@ -290,29 +66,30 @@ The failure-stage analysis, additional metrics per method, and all qualitative r
 | core_detect | 42.3 ± 10.3 | <ins>53.3 ± 8.5</ins> | 39.0 ± 5.3 | 34.0 ± 3.6 | 42.2 ± 3.5 |
 | mire | **75.0 ± 4.6** | **75.3 ± 10.4** | **88.0 ± 1.7** | **64.7 ± 1.5** | **75.8 ± 3.0** |
 
-**Table 2. Success rate per perturbation and timing (%)**
+**Table 2. Success rate within a step budget (%), all perturbations and timings pooled (1,200 episodes per method)**
 
-| Method | R1 arm collision<br>0.30 / 0.55 / 0.75 | T2 grasp failure<br>0.30 / 0.55 / 0.75 | G5 object displacement<br>0.30 / 0.55 / 0.75 | G4 object tip-over<br>0.30 / 0.55 / 0.75 |
-|---|---|---|---|---|
-| *CoRe paper: bare OFT* | *15.5 / 17.0 / 23.5* | *54.5 / 67.5 / 73.0* | *20.5 / 12.0 / 8.0* | *13.5 / 6.0 / 11.5* |
-| vanilla | 22 / 17 / 29 | 34 / 31 / 56 | 29 / 18 / 13 | 21 / 20 / 20 |
-| replan | 20 / 21 / 30 | 33 / 29 / 57 | 28 / 18 / 15 | 20 / 19 / 20 |
-| rehome | 63 / 47 / 51 | 23 / 26 / 47 | 26 / 30 / 26 | 20 / 23 / 19 |
-| retreat | 51 / 25 / 40 | 23 / 24 / 43 | 24 / 21 / 20 | 22 / 24 / 19 |
-| safeloop | <ins>67</ins> / <ins>61</ins> / <ins>69</ins> | 25 / 18 / 34 | 30 / 27 / 25 | 20 / 21 / 20 |
-| rewind_il | 22 / 39 / 47 | 32 / 39 / 60 | 26 / 13 / 14 | 22 / 22 / 19 |
-| volo | 23 / 17 / 22 | 32 / 30 / 58 | 18 / 19 / 22 | 16 / 22 / 24 |
-| core | 60 / 50 / <ins>69</ins> | <ins>66</ins> / 41 / 41 | <ins>65</ins> / <ins>71</ins> / <ins>72</ins> | <ins>47</ins> / <ins>54</ins> / <ins>58</ins> |
-| core_detect | 45 / 31 / 51 | 47 / <ins>50</ins> / <ins>63</ins> | 45 / 35 / 37 | 33 / 38 / 31 |
-| mire | **76** / **70** / **79** | **87** / **67** / **72** | **87** / **90** / **87** | **66** / **65** / **63** |
+| Method | ≤ 300 steps | ≤ 350 steps | ≤ 400 steps | ≤ 450 steps | ≤ 500 steps | ≤ 600 steps |
+|---|---|---|---|---|---|---|
+| vanilla | 15.8 | 20.3 | 22.3 | 24.2 | 24.9 | 25.8 |
+| replan | 15.4 | 19.8 | 22.3 | 24.0 | 24.8 | 25.8 |
+| rehome | 8.2 | 15.9 | 21.1 | 25.7 | 29.8 | 33.4 |
+| retreat | 6.2 | 13.6 | 18.9 | 23.0 | 25.0 | 28.0 |
+| safeloop | 15.8 | <ins>25.2</ins> | <ins>29.3</ins> | <ins>31.9</ins> | 33.4 | 34.8 |
+| rewind_il | 15.5 | 21.2 | 25.2 | 27.8 | 28.6 | 29.6 |
+| volo | <ins>16.3</ins> | 21.2 | 22.8 | 23.8 | 24.4 | 25.2 |
+| core | 9.2 | 12.2 | 16.2 | 27.3 | <ins>42.2</ins> | <ins>57.8</ins> |
+| core_detect | <ins>16.3</ins> | 20.2 | 23.2 | 26.9 | 30.8 | 42.2 |
+| mire | **31.2** | **46.6** | **57.7** | **63.4** | **67.8** | **75.8** |
+
+- Steps count from the start of the episode; an episode that fails counts as unfinished at every budget
+- 600 steps is the step limit, so the last column is the overall success rate
 
 - Progress: 120/120 conditions (`…` = still running)
 - Valid episodes per condition: 100 (10 tasks pooled; CoRe paper: 200)
-- 95% interval of a per-timing value: about ±8–10 pp at 100 episodes
 - The CoRe paper reports CoRe only on π0.5, X-VLA and GR00T N1.7, not on OpenVLA-OFT
 <!-- RESULTS:nv10 END -->
 
-### 6.2 Qualitative results
+### 1.2 Qualitative results
 
 <!-- The video lists (QUALITATIVE_MAIN blocks) are rewritten by `python src/panda/oft/make_qualitative.py` from the main episodes in selection.json. The titles and text are written by hand. -->
 
@@ -410,17 +187,110 @@ One episode per perturbation in which MIRe fails, with the stage at which it fai
 
 ---
 
-## 7. Limitations
+## 2. Method
 
-- **Privileged clean rollout**: MIRe takes its grasp, carry path, and handoff pose from a clean rollout run beforehand from the same initial state, as a stand-in for an imagined trajectory. This is not available in deployment.
-- **Oracle detection and perception**: all methods except `core_detect` are triggered by an oracle (end of the perturbation + 8 steps), and the recoveries read object poses and BDDL goal conditions from the simulator.
-- **Unofficial baselines**: the baselines are our reimplementations. Parts that the papers learn or obtain from VLMs are replaced by oracles ([Section 4](#4-recovery-methods)), and `core` restores the world by pick-and-place instead of writing the simulator state.
-- **Scope**: one policy (OpenVLA-OFT), one suite (LIBERO-10), simulation only, and the four perturbations of the CoRe protocol.
-- **Planning time**: recovery planning runs while the simulation is paused, so its wall-clock time is not part of the 600-step limit.
+<p align="center">
+  <img src="assets/teaser/mire_method.png" alt="MIRe: route, own grasp, DMP pathway and shadow handoff" width="800"><br>
+  <em>MIRe routes on the target object's state, retakes it with the policy's own grasp, follows the clean path with a DMP, and hands back once the shadow-queried VLA agrees.</em>
+</p>
+
+MIRe does not rewind the world (arm and objects). It re-grasps the target with the grasp the VLA originally used, carries it, and hands back as soon as the VLA can take over.
+- **No rewind**: the arm and objects are not rewound to a past state; the current subgoal continues from the perturbed state.
+- **Original grasp**: the grasp the VLA made in the clean rollout is reused in the object frame. If that grasp cannot be reached directly, the object is picked with another grasp, set down, and taken again with the original grasp, so that the VLA takes over from a familiar hand pose.
+- **DMP carry**: a joint-space DMP follows the shape of the clean carry, with a repulsive term that avoids predicted collisions. Releasing is left to the VLA; the carry stops 40 steps before it.
+- **Shadow VLA handoff**: the VLA is queried during the carry, and control is handed back on the spot once its actions agree with the plan three times in a row.
+- **Imagined trajectory**: the trajectory without the perturbation is used like the imagined rollout of CoRe. For now, it is replaced by a real rollout run beforehand from the same initial state.
+
+The nine baselines, their sources, and how we implemented them are in [BASELINES.md](BASELINES.md).
 
 ---
 
-## 8. References
+## 3. Installation
+
+See [INSTALL.md](INSTALL.md) for installation, a quick check, the OpenVLA-OFT evaluation without perturbations (clean evaluation), and the preprocessing steps. Run all commands below from the repository root (`VLA_MIRE/`) with the following environment variables, set in every new terminal.
+
+```bash
+conda activate openvla-oft
+export MUJOCO_GL=egl PYTHONPATH=$PWD/openvla-oft:$PWD
+export PYTHONPYCACHEPREFIX=$PWD/.cache/pycache   # keeps __pycache__ out of the submodules
+COMMON="--pretrained_checkpoint moojink/openvla-7b-oft-finetuned-libero-10 --task_suite_name libero_10"
+```
+
+---
+
+## 4. Evaluation
+
+For each method, the 12 conditions (4 perturbations × 3 timings) run one after another, and the result tables are updated after each condition. Conditions that already have a finished log (one with a `Total:` line) are skipped, and a failed condition is left as is while the loop moves on. Running the same command again therefore evaluates only the remaining and failed conditions.
+
+```bash
+RECS="vanilla replan rehome retreat safeloop rewind_il volo core core_detect mire"   # methods to run
+for R in $RECS; do for F in arm_collision grasp_failure object_displace object_tip; do for TM in 0.30 0.55 0.75; do
+  grep -qs "Total:" outputs/logs/libero_10/oft/PERTURB-$R-$F-$TM-*--nv10.txt && continue   # skip finished conditions
+  python src/panda/oft/run_libero_eval_perturb_parallel.py $COMMON --save_videos none \
+    --perturb_family $F --perturb_timing $TM --recovery $R --run_id_note nv10 \
+    --num_valid_per_task 10 --num_workers 5   # on failure, move on to the next condition
+  python src/summarize_perturb.py --num_splits 1 > /dev/null
+done; done; done
+```
+
+| Option | Value | Description |
+|---|---|---|
+| `--perturb_family` | `arm_collision` / `grasp_failure` / `object_displace` / `object_tip` | Perturbation: hit on the arm / gripper forced open while carrying / target moved by 12 cm / target tipped over |
+| `--perturb_timing` | `0.30` / `0.55` / `0.75` | Fraction of the calibrated phase length |
+| `--recovery` | `vanilla` `replan` `rehome` `retreat` `safeloop` `rewind_il` `volo` `core` `core_detect` `mire` | Recovery method ([Method](#2-method), [BASELINES.md](BASELINES.md)) |
+| `--num_valid_per_task` | default 20, 10 in our experiments | Valid episodes collected per task |
+| `--num_workers` | default 5 | Simulator processes sharing one model |
+| `--max_steps` | default 600 | Step limit per episode |
+| `--recovery_delay` | default 8 | Steps from the end of the perturbation to the recovery trigger (oracle trigger; not used by `core_detect`) |
+| `--run_id_note` | e.g., `nv10` | Tag in the log names; aggregation (`summarize_perturb.py --tag`) selects runs by this string |
+
+- **Episode selection**: `--num_valid_per_task` valid episodes are collected per task.
+  - Only initial states that succeed in the clean evaluation are used, starting from index 0. The perturbation seed of initial state k is k (k+50, k+100, … when 50 are not enough).
+  - All methods use the same rule, so the same episodes can be paired across methods.
+- **Outputs**
+  - Logs: `outputs/logs/libero_10/oft/PERTURB-<recovery>-<perturbation>-<timing>-<time>--<note>.txt` (the last `Total:` line gives the successes in the condition)
+  - Per-episode records: the `.jsonl` file with the same name (validity, perturbation parameters, trigger step, success step, and recovery details in `recovery_info`)
+  - Actions: `outputs/actions/libero_10/oft/<run_id>/` (for replay)
+- **Aggregation**: each condition runs as one log, so the tables are built with `--num_splits 1`. If the tasks were split across two GPUs (`--task_ids 0-4` / `5-9`), each condition has two logs; use `--num_splits 2` (default).
+
+**Run time and notes**
+- **Time per method**: about 4–10 hours on one GPU (with two GPUs: `core` 4.2 h, `core_detect` 5.3 h, `mire` 3.7 h).
+- **Out of memory**: reduce `--num_workers`.
+
+---
+
+## 5. Replay
+
+The perturbed evaluation records the policy actions and fixture positions of every episode, so videos can be made again without the model.
+
+```bash
+python src/panda/oft/replay_libero.py --recovery mire --family object_tip --timing 0.55 --task_ids 0-4 --success false
+```
+
+Videos are saved in `outputs/videos/libero_10/oft/<run_id>/`.
+
+The qualitative videos of [Section 1.2](#12-qualitative-results) and Section 2 of [RESULTS.md](RESULTS.md) are made the same way: paired episodes are chosen per scenario, and the methods are placed side by side in one video.
+
+```bash
+python src/panda/oft/make_qualitative.py --num_workers 8
+```
+
+The videos (mp4) and previews (GIF) are saved in `assets/qualitative/libero_10_oft/`, and the lists in Section 1.2 and in Section 2 of RESULTS.md are rewritten.
+
+---
+
+## 6. Limitations
+
+- **Privileged clean rollout**: MIRe takes its grasp, carry path, and handoff pose from a clean rollout run beforehand from the same initial state, as a stand-in for an imagined trajectory. This is not available in deployment.
+- **Oracle detection and perception**: all methods except `core_detect` are triggered by an oracle (end of the perturbation + 8 steps), and the recoveries read object poses and BDDL goal conditions from the simulator.
+- **Unofficial baselines**: the baselines are our reimplementations. Parts that the papers learn or obtain from VLMs are replaced by oracles ([BASELINES.md](BASELINES.md)), and `core` restores the world by pick-and-place instead of writing the simulator state.
+- **Scope**: one policy (OpenVLA-OFT), one suite (LIBERO-10), simulation only, and the four perturbations of the CoRe protocol.
+- **Planning time**: recovery planning runs while the simulation is paused, so its wall-clock time is not part of the 600-step limit.
+- **Cost of intervening**: MIRe also intervenes when the policy would recover on its own. On episodes that both MIRe and no recovery solve, MIRe finishes 6 steps (0.3 s) later at the median, mostly from re-grasping and carrying the policy did not need.
+
+---
+
+## 7. References
 
 Work used to build this repository. For papers only on arXiv, the upload date of v1 is given.
 
